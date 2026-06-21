@@ -1,6 +1,5 @@
 import { logMessage, logError } from '../lib/logger.js';
 import { handleMessage } from '../lib/router.js';
-import autoreact from '../plugins/automations/autoreact.js';
 
 export default {
   name: 'messages.upsert',
@@ -28,8 +27,16 @@ export default {
         type: messageType
       });
 
-      // Call autoreact plugin before command execution
-      await autoreact(sock, msg);
+      // Execute all automations
+      if (global.automations) {
+        for (const auto of global.automations) {
+          try {
+            auto(sock, msg).catch(e => logError(`Automation error: ${e.message}`));
+          } catch (err) {
+            logError(`Automation crash: ${err.message}`);
+          }
+        }
+      }
 
       // Pass message to router for command processing
       try {
