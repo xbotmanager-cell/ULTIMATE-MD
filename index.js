@@ -8,6 +8,7 @@ import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
 import { config } from 'dotenv';
+import { get } from './lib/db.js';
 
 config();
 
@@ -42,11 +43,15 @@ const startBot = async () => {
 
   const { state, saveCreds } = await useMultiFileAuthState('./sessions');
 
+  const currentMode = get('mode') || 'public';
+  const isGhost = currentMode === 'ghost';
+
   const sock = makeWASocket({
     auth: state,
     logger: pino({ level: 'silent' }),
     browser: ['Ubuntu', 'Chrome', '20.0.0'],
-    markOnlineOnConnect: false
+    markOnlineOnConnect: !isGhost,
+    sendReceipts: !isGhost
   });
 
   sock.ev.on('creds.update', saveCreds);
