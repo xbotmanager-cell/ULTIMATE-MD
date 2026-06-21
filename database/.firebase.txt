@@ -1,0 +1,11 @@
+{
+  "swiftbot": {
+    "settings": {
+      "prefix": "$",
+      "mode": "public",
+      "owner": "",
+      "antidelete": true,
+      "botname": "ULTIMATE-MD"
+    }
+  }
+}

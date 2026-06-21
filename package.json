@@ -1,0 +1,24 @@
+{
+  "name": "ultimate-md",
+  "version": "1.0.0",
+  "description": "ULTIMATE-MD WhatsApp Bot",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.22",
+    "express": "^4.21.2",
+    "pino": "^9.0.0",
+    "dotenv": "^16.4.5",
+    "qrcode-terminal": "^0.12.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "mongoose": "^8.6.0",
+    "firebase-admin": "^12.4.0",
+    "@google/genai": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
