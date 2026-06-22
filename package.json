@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "build": "echo 'No build required'",
+    "lint": "echo 'No lint required'"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

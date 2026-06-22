@@ -3,7 +3,9 @@ import { smallCaps } from './fonts.js';
 export const createBox = (title, items) => {
   const top = `╭─━━━━━━━━━━━━━━━━━─╮\n│   ${smallCaps(title)}\n├─━━━━━━━━━━━━━━━━━─┤`;
   const bottom = `╰─━━━━━━━━━━━━━━━━━─╯`;
-  const middle = items.map(line => `│  ${smallCaps(line)}`).join('\n');
+  const middle = items.map(line => {
+      return line.split('\n').map(part => `│  ${smallCaps(part)}`).join('\n');
+  }).join('\n');
   return `${top}\n${middle}\n${bottom}`;
 };
 
@@ -15,13 +17,16 @@ export const createMenuBox = (category, items) => {
 };
 
 export const formatLine = (label, value) => {
+  if (!value) return `${label}`;
   return `${label.padEnd(6, ' ')} ➤ ${value}`;
 };
 
 export const createAliveBox = (botname, lines) => {
   const top = `╭─━━━━━━━━━━━━━━━━━─╮\n│   ${smallCaps(botname)}\n├─━━━━━━━━━━━━━━━━━─┤`;
   const bottom = `╰─━━━━━━━━━━━━━━━━━─╯`;
-  const middle = lines.map(line => `│  ${smallCaps(line)}`).join('\n');
+  const middle = lines.map(line => {
+      return line.split('\n').map(part => `│  ${smallCaps(part)}`).join('\n');
+  }).join('\n');
   return `${top}\n${middle}\n${bottom}`; 
 };
 
