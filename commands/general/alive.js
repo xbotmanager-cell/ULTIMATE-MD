@@ -22,15 +22,8 @@ export default {
     const owner = get('owner') || '@you';
     const prefix = get('prefix') || '$';
     
-    // Alive box expects no vertical lines at the start of each line
-    // example format:
-    // ╭─━━━━━━━━━━━━━━━━━─╮
-    //    ᴜʟᴛɪᴍᴀᴛᴇ-ᴍᴅ     
-    // ├─━━━━━━━━━━━━━━━━━─┤
-    //   ᴘʀᴇғɪx ➤ $        
-    //   ᴍᴏᴅᴇ   ➤ ᴘᴜʙʟɪᴄ   
-    //   ᴏᴡɴᴇʀ  ➤ @ʏᴏᴜ     
-    // ╰─━━━━━━━━━━━━━━━━━─╯
+    // box format
+    const botname = get('botname') || 'ULTIMATE-MD';
     const bodyLines = [
       formatLine('ᴘʀᴇғɪx', prefix),
       formatLine('ᴍᴏᴅᴇ  ', mode),
@@ -39,7 +32,7 @@ export default {
       formatLine('ʀᴀᴍ   ', `${memUsage.toFixed(2)} MB`)
     ];
     
-    const boxMessage = createAliveBox(bodyLines);
+    const boxMessage = createAliveBox(botname, bodyLines);
     
     await sock.sendMessage(msg.key.remoteJid, { text: boxMessage }, { quoted: msg });
   }

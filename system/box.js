@@ -18,11 +18,10 @@ export const formatLine = (label, value) => {
   return `${label.padEnd(6, ' ')} ➤ ${value}`;
 };
 
-export const createAliveBox = (lines) => {
-  // no vertical lines at the start of each line
-  const top = `╭─━━━━━━━━━━━━━━━━━─╮\n   ᴜʟᴛɪᴍᴀᴛᴇ-ᴍᴅ\n├─━━━━━━━━━━━━━━━━━─┤`;
+export const createAliveBox = (botname, lines) => {
+  const top = `╭─━━━━━━━━━━━━━━━━━─╮\n│   ${smallCaps(botname)}\n├─━━━━━━━━━━━━━━━━━─┤`;
   const bottom = `╰─━━━━━━━━━━━━━━━━━─╯`;
-  const middle = lines.map(line => `  ${smallCaps(line)}`).join('\n');
+  const middle = lines.map(line => `│  ${smallCaps(line)}`).join('\n');
   return `${top}\n${middle}\n${bottom}`; 
 };
 
