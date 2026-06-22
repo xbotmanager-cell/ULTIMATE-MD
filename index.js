@@ -55,6 +55,10 @@ const startBot = async () => {
     auth: state,
     logger: pino({ level: 'silent' }),
     browser: Browsers.ubuntu('Chrome'),
+    connectTimeoutMs: 60000,
+    keepAliveIntervalMs: 30000,
+    defaultQueryTimeoutMs: 60000,
+    syncFullHistory: false,
     markOnlineOnConnect: !isGhost,
     sendReceipts: !isGhost
   });
