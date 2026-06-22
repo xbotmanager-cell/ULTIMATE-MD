@@ -1,5 +1,6 @@
 import { createBox, formatLine } from '../../system/box.js';
 import { get, set } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: 'eval',
@@ -7,8 +8,9 @@ export default {
   category: 'developer',
   execute: async (sock, msg, args) => {
       try {
-         const isOwner = msg.key.participant === process.env.OWNER_NUMBER + '@s.whatsapp.net' || msg.key.remoteJid === process.env.OWNER_NUMBER + '@s.whatsapp.net';
-         if (!isOwner) return sock.sendMessage(msg.key.remoteJid, { text: 'Only the developer can use this command.' }, { quoted: msg });
+         const sender = msg.key.participant || msg.key.remoteJid;
+         const ownerCheck = isOwner(sock, msg, sender);
+         if (!ownerCheck) return sock.sendMessage(msg.key.remoteJid, { text: 'Only the developer can use this command.' }, { quoted: msg });
 
          const botname = get('botname') || 'ULTIMATE-MD';
          let result = 'Dev operation successful.';

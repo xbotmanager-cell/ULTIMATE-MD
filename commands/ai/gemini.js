@@ -1,61 +1,77 @@
 import { get } from '../../lib/db.js';
-import { createBox, formatLine } from '../../system/box.js';
-import fs from 'fs';
-import path from 'path';
+import { GoogleGenAI } from '@google/genai';
+import axios from 'axios';
+
+const memory = {};
 
 export default {
-  name: 'gemini',
-  alias: ['ai', 'chat'],
-  desc: 'ᴄʜᴀᴛ ᴡɪᴛʜ ɢᴇᴍɪɴɪ ᴀɪ',
-  category: 'ai',
-  react: '🤖',
-  execute: async (sock, msg, args) => {
-    const text = args.join(' ');
-    if (!text) {
-      return sock.sendMessage(msg.key.remoteJid, { text: 'Bruh you forgot to ask something!' }, { quoted: msg });
+    name: 'gemini',
+    alias: ['geminipro'],
+    category: 'ai',
+    desc: 'Chat with gemini',
+    react: '✨',
+    execute: async (sock, msg, args) => {
+        try {
+            const jid = msg.key.remoteJid;
+            const input = args.join(' ');
+            
+            let quotedText = '';
+            const ctx = msg.message?.extendedTextMessage?.contextInfo;
+            if (ctx?.quotedMessage?.conversation) quotedText = ctx.quotedMessage.conversation;
+            else if (ctx?.quotedMessage?.extendedTextMessage?.text) quotedText = ctx.quotedMessage.extendedTextMessage.text;
+            
+            const fullQuery = quotedText ? `${quotedText}\n\n${input || 'Please respond to the above.'}` : input;
+
+            if (!fullQuery) {
+                return sock.sendMessage(jid, { text: 'What do you want to talk about?' }, { quoted: msg });
+            }
+
+            if (!memory[jid]) memory[jid] = [];
+            
+            const systemPrompt = `You are Gemini, a highly capable AI model developed by Google. Give clever, fun, and straightforward answers.`;
+            
+            let responseText = '';
+            
+            if (process.env.GEMINI_API_KEY) {
+                try {
+                    const aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+                    let contextStr = memory[jid].map(m => `${m.role}: ${m.content}`).join('\n');
+                    let prompt = `System: ${systemPrompt}\n\nPast Conversation:\n${contextStr}\n\nUser: ${fullQuery}\nGEMINI:`;
+
+                    const response = await aiClient.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: prompt
+                    });
+                    
+                    if (response.text) responseText = response.text.trim();
+                } catch(e) {
+                    console.log('Gemini Error:', e.message);
+                }
+            }
+
+            if (!responseText) {
+                try {
+                    const res = await axios.get(`https://api.simsimi.vn/v1/simtalk?text=${encodeURIComponent(fullQuery)}&lc=en`);
+                    if (res.data && res.data.message) {
+                        responseText = res.data.message;
+                    } else {
+                        responseText = `(GEMINI API Offline Mode): I read you, but I'm currently without my API key or primary network connection. You said: ${fullQuery}`;
+                    }
+                } catch(e) {
+                    responseText = `(GEMINI): Sorry, my network is heavily congested right now!`;
+                }
+            }
+            
+            memory[jid].push({ role: 'User', content: fullQuery });
+            memory[jid].push({ role: 'GEMINI', content: responseText });
+            
+            if (memory[jid].length > 10) {
+                memory[jid] = memory[jid].slice(memory[jid].length - 10);
+            }
+
+            await sock.sendMessage(jid, { text: responseText }, { quoted: msg });
+        } catch (e) {
+            await sock.sendMessage(msg.key.remoteJid, { text: 'My brain just crashed! 😂 Try again.' }, { quoted: msg });
+        }
     }
-
-    const pushName = msg.pushName || 'BrainlessUser';
-    const memoryPath = path.resolve(`./memory/${pushName}.json`);
-
-    let history = [];
-    if (fs.existsSync(memoryPath)) {
-      history = JSON.parse(fs.readFileSync(memoryPath, 'utf8'));
-    }
-
-    history.push({ role: 'user', content: text });
-
-    // Call Gemini API (using @google/genai syntax)
-    let aiResponse = '';
-    try {
-      const { GoogleGenAI } = await import('@google/genai');
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-         throw new Error('GEMINI API KEY MISSING');
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const prompt = history.map(m => `${m.role}: ${m.content}`).join('\n') + '\model: ';
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
-      });
-
-      aiResponse = response.text || 'My brain is currently resting, try again later.';
-
-    } catch (e) {
-      aiResponse = 'Wow that knowledge even Google cannot find it. ' + e.message;
-    }
-
-    history.push({ role: 'model', content: aiResponse });
-
-    // Limit memory to the last 10 interactions to avoid huge files
-    if (history.length > 20) history = history.slice(-20);
-
-    fs.writeFileSync(memoryPath, JSON.stringify(history, null, 2));
-
-    await sock.sendMessage(msg.key.remoteJid, { text: aiResponse }, { quoted: msg });
-  }
 };

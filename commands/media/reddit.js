@@ -10,82 +10,54 @@ export default {
   execute: async (sock, msg, args) => {
       try {
          let url = args.join(' ');
-         if (!url && msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
+         if (!url && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
              url = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
-         } else if (!url && msg.message.extendedTextMessage?.contextInfo?.quotedMessage?.extendedTextMessage?.text) {
+         } else if (!url && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.extendedTextMessage?.text) {
              url = msg.message.extendedTextMessage.contextInfo.quotedMessage.extendedTextMessage.text;
          }
 
-         if (!url) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid reddit link or reply to a message containing it.' }, { quoted: msg });
+         if (!url) return sock.sendMessage(msg.key.remoteJid, { text: 'Bruh, provide a valid reddit link or reply to one!' }, { quoted: msg });
          
          const urlRegex = /(https?:\/\/[^\s]+)/g;
          const urls = url.match(urlRegex);
-         if (!urls) return sock.sendMessage(msg.key.remoteJid, { text: 'No valid URL found.' }, { quoted: msg });
+         if (!urls) return sock.sendMessage(msg.key.remoteJid, { text: 'I couldn\'t find a valid link in that! 🤡' }, { quoted: msg });
          url = urls[0];
 
-         const apiSources = [];
-         for(let i=1; i<=20; i++) {
-             apiSources.push({ url: `https://api${i}.example.com/reddit?url=${encodeURIComponent(url)}`, path: 'video_url', extra: 'title' });
-         }
-         // Adding real ones for tiktok
-         if ('reddit' === 'tiktok') {
-            apiSources.unshift({ url: `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`, path: 'data.play', extra: 'data.title' });
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '⏳ Fetching reddit media... please wait.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: '⏳ Fetching reddit media... hang tight.' }, { quoted: msg });
 
          let finalUrl = '';
-         let captionText = 'Downloaded successfully!';
-         let usedApi = 'Fallback';
-
-         for (let i = 0; i < apiSources.length; i++) {
+         let captionText = 'Downloaded via ULTIMATE-MD';
+         
+         if ('reddit' === 'tiktok') {
             try {
-               const res = await axios.get(apiSources[i].url, { timeout: 4000 });
-               if (res.data) {
-                  let val = res.data;
-                  const paths = apiSources[i].path.split('.');
-                  for (const p of paths) { if (val) val = val[p]; }
-                  if (val && typeof val === 'string' && val.startsWith('http')) {
-                     finalUrl = val;
-                     
-                     let ex = res.data;
-                     if(apiSources[i].extra) {
-                         const epaths = apiSources[i].extra.split('.');
-                         for (const p of epaths) { if (ex) ex = ex[p]; }
-                         if(ex && typeof ex === 'string') captionText = ex;
-                     }
-
-                     let u = new URL(apiSources[i].url);
-                     usedApi = u.hostname;
-                     break;
-                  }
-               }
-            } catch (e) {
-               continue;
-            }
-         }
-
-         if (!finalUrl) {
-            finalUrl = 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png';
-            captionText = 'API Timeout - Could not fetch media directly!';
+               const res = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
+               if (res.data?.data?.play) {
+                   finalUrl = res.data.data.play;
+                   captionText = res.data.data.title || captionText;
+               } else { throw new Error('Not found'); }
+            } catch(e) { return sock.sendMessage(msg.key.remoteJid, { text: 'TikTok download failed! No video found or API down. 😭' }, { quoted: msg }); }
+         } else if ('reddit' === 'instagram' || 'reddit' === 'facebook' || 'reddit' === 'twitter') {
+            try {
+               const res = await axios.get(`https://api.akuari.my.id/downloader/${'reddit' === 'instagram' ? 'igdl' : 'reddit'}?link=${encodeURIComponent(url)}`);
+               if (res.data?.result?.url || res.data?.url?.[0]?.url) {
+                   finalUrl = res.data.result?.url || res.data.url[0].url;
+               } else { throw new Error('Not found'); }
+            } catch(e) { return sock.sendMessage(msg.key.remoteJid, { text: 'REDDIT download failed! Try another link. 😭' }, { quoted: msg }); }
+         } else {
+             return sock.sendMessage(msg.key.remoteJid, { text: 'Downloading from REDDIT is temporarily unavailable!' }, { quoted: msg });
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
          const box = createBox(botname, [
             formatLine('ᴛᴏᴏʟ', 'REDDIT DOWNLOADER'),
-            formatLine('sᴏᴜʀᴄᴇ', usedApi),
-            formatLine('ᴅᴇᴛᴀɪʟ', captionText.substring(0, 30))
+            formatLine('ᴅᴇᴛᴀɪʟ', captionText.substring(0, 30) + '...')
          ]);
 
-         if (finalUrl.includes('.mp4') || 'reddit' === 'tiktok' && finalUrl.startsWith('http') && !finalUrl.includes('logo.png')) {
+         if (finalUrl.includes('.mp4') || finalUrl.startsWith('https://')) {
              await sock.sendMessage(msg.key.remoteJid, { video: { url: finalUrl }, caption: box }, { quoted: msg });
-         } else {
-             await sock.sendMessage(msg.key.remoteJid, { image: { url: finalUrl }, caption: box }, { quoted: msg });
          }
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in reddit downloader.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Downloading reddit just crashed my tiny server brain 😭.' }, { quoted: msg });
       }
   }
 };

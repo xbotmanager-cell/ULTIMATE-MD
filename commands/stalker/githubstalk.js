@@ -4,66 +4,74 @@ import axios from 'axios';
 
 export default {
   name: 'githubstalk',
-  alias: ['stalkgithub'],
-  desc: 'Stalk profile for github',
+  alias: ['stalkgithub', 'ghstalk'],
+  desc: 'Stalk a GitHub profile',
   category: 'stalker',
+  react: '🕵️',
   execute: async (sock, msg, args) => {
       try {
-         const username = args.join('');
-         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid username to stalk!' }, { quoted: msg });
+         const username = args.join('').replace('@', '');
+         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid GitHub username!' }, { quoted: msg });
 
-         const target = cmd === 'githubstalk' ? 'github' : 'github';
-         const apiSources = [];
-         
-         if (target === 'github') {
-             apiSources.push({ url: `https://api.github.com/users/${encodeURIComponent(username)}`, pic: 'avatar_url', name: 'name', bio: 'bio', followers: 'followers' });
-         } else {
-             for(let i=1; i<=20; i++) {
-                 apiSources.push({ url: `https://api${i}.example.com/${target}stalk?user=${encodeURIComponent(username)}`, pic: 'profile_pic', name: 'fullname', bio: 'description', followers: 'followers_count' });
-             }
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '🕵️ Fetching profile details...' }, { quoted: msg });
-
-         let picUrl = 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png';
+         let picUrl = '';
          let fullName = 'N/A';
          let bioData = 'N/A';
-         let followersData = '0';
-         let usedApi = 'Fallback';
+         let followers = '0';
+         let following = '0';
+         let repos = '0';
+         let company = 'N/A';
 
-         for (let i = 0; i < apiSources.length; i++) {
-            try {
-               const res = await axios.get(apiSources[i].url, { timeout: 3000 });
-               if (res.data) {
-                  const d = res.data;
-                  if (d[apiSources[i].pic]) picUrl = d[apiSources[i].pic];
-                  if (d[apiSources[i].name]) fullName = d[apiSources[i].name];
-                  if (d[apiSources[i].bio]) bioData = d[apiSources[i].bio];
-                  if (d[apiSources[i].followers]) followersData = d[apiSources[i].followers];
-                  
-                  let u = new URL(apiSources[i].url);
-                  usedApi = u.hostname;
-                  break;
-               }
-            } catch (e) {
-               continue;
-            }
+         const axiosConfig = { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' } };
+         try {
+             const res = await axios.get(`https://api.github.com/users/${encodeURIComponent(username)}`, axiosConfig);
+             if (res.data && res.data.login) {
+                 picUrl = res.data.avatar_url;
+                 fullName = res.data.name || res.data.login;
+                 bioData = res.data.bio || 'No bio';
+                 followers = res.data.followers;
+                 following = res.data.following;
+                 repos = res.data.public_repos;
+                 company = res.data.company || 'None';
+             } else {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'User not found! 😭' }, { quoted: msg });
+             }
+         } catch(e) { 
+             try {
+                 const res = await axios.get(`https://bk9.fun/stalk/github?q=${encodeURIComponent(username)}`);
+                 if(res.data?.BK9) {
+                     picUrl = res.data.BK9.avatar_url;
+                     fullName = res.data.BK9.name || res.data.BK9.login;
+                     bioData = res.data.BK9.bio || 'No bio';
+                     followers = res.data.BK9.followers;
+                     following = res.data.BK9.following;
+                     repos = res.data.BK9.public_repos;
+                     company = res.data.BK9.company || 'None';
+                 } else { throw new Error('Not found') }
+             } catch(err) {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'GitHub API down, couldn\'t stalk!' }, { quoted: msg });
+             }
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
          const box = createBox(botname, [
-            formatLine('ᴛᴀʀɢᴇᴛ', target.toUpperCase()),
+            formatLine('ᴛᴀʀɢᴇᴛ', 'GITHUB'),
             formatLine('ᴜsᴇʀɴᴀᴍᴇ', username),
-            formatLine('ɴᴀᴍᴇ', String(fullName).substring(0, 20)),
-            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followersData)),
-            formatLine('ʙɪᴏ', String(bioData).substring(0, 25))
+            formatLine('ɴᴀᴍᴇ', fullName),
+            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followers)),
+            formatLine('ғᴏʟʟᴏᴡɪɴɢ', String(following)),
+            formatLine('ʀᴇᴘᴏs', String(repos)),
+            formatLine('ᴄᴏᴍᴘᴀɴʏ', String(company)),
+            formatLine('ʙɪᴏ', String(bioData)),
+            formatLine('ʟɪɴᴋ', `github.com/${username}`)
          ]);
 
-         await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         if (picUrl) {
+             await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         } else {
+             await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
+         }
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in githubstalk.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Whoops, stealth mode broke, I dropped my binoculars! 🤦‍♂️' }, { quoted: msg });
       }
   }
 };

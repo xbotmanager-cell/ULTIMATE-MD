@@ -4,66 +4,64 @@ import axios from 'axios';
 
 export default {
   name: 'npmstalk',
-  alias: ['stalknpm'],
-  desc: 'Stalk profile for npm',
+  alias: ['stalknpm', 'npmpkg'],
+  desc: 'Stalk an NPM package',
   category: 'stalker',
+  react: '🕵️',
   execute: async (sock, msg, args) => {
       try {
-         const username = args.join('');
-         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid username to stalk!' }, { quoted: msg });
+         const pkg = args.join('').toLowerCase();
+         if (!pkg) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid NPM package name!' }, { quoted: msg });
 
-         const target = cmd === 'githubstalk' ? 'github' : 'npm';
-         const apiSources = [];
-         
-         if (target === 'github') {
-             apiSources.push({ url: `https://api.github.com/users/${encodeURIComponent(username)}`, pic: 'avatar_url', name: 'name', bio: 'bio', followers: 'followers' });
-         } else {
-             for(let i=1; i<=20; i++) {
-                 apiSources.push({ url: `https://api${i}.example.com/${target}stalk?user=${encodeURIComponent(username)}`, pic: 'profile_pic', name: 'fullname', bio: 'description', followers: 'followers_count' });
-             }
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '🕵️ Fetching profile details...' }, { quoted: msg });
-
-         let picUrl = 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png';
+         let picUrl = 'https://upload.wikimedia.org/wikipedia/commons/d/db/Npm-logo.svg';
          let fullName = 'N/A';
          let bioData = 'N/A';
-         let followersData = '0';
-         let usedApi = 'Fallback';
+         let version = '0';
+         let license = 'N/A';
+         let author = 'N/A';
 
-         for (let i = 0; i < apiSources.length; i++) {
-            try {
-               const res = await axios.get(apiSources[i].url, { timeout: 3000 });
-               if (res.data) {
-                  const d = res.data;
-                  if (d[apiSources[i].pic]) picUrl = d[apiSources[i].pic];
-                  if (d[apiSources[i].name]) fullName = d[apiSources[i].name];
-                  if (d[apiSources[i].bio]) bioData = d[apiSources[i].bio];
-                  if (d[apiSources[i].followers]) followersData = d[apiSources[i].followers];
-                  
-                  let u = new URL(apiSources[i].url);
-                  usedApi = u.hostname;
-                  break;
-               }
-            } catch (e) {
-               continue;
-            }
+         const axiosConfig = { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' } };
+         try {
+             const res = await axios.get(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`, axiosConfig);
+             if (res.data && res.data.name) {
+                 fullName = res.data.name;
+                 bioData = res.data.description || 'No description';
+                 const latest = res.data['dist-tags']?.latest;
+                 version = latest || 'N/A';
+                 license = res.data.license || res.data.versions?.[latest]?.license || 'N/A';
+                 author = res.data.author?.name || 'Unknown';
+             } else {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'Package not found! 😭' }, { quoted: msg });
+             }
+         } catch(e) { 
+             try{
+                 const res = await axios.get(`https://bk9.fun/stalk/npm?q=${encodeURIComponent(pkg)}`);
+                 if(res.data?.BK9) {
+                     fullName = res.data.BK9.name;
+                     bioData = res.data.BK9.description || 'No description';
+                     version = res.data.BK9.version || 'N/A';
+                     license = res.data.BK9.license || 'N/A';
+                     author = res.data.BK9.author || 'Unknown';
+                 } else throw new Error();
+             } catch(err) {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'NPM API down, couldn\'t stalk!' }, { quoted: msg });
+             }
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
          const box = createBox(botname, [
-            formatLine('ᴛᴀʀɢᴇᴛ', target.toUpperCase()),
-            formatLine('ᴜsᴇʀɴᴀᴍᴇ', username),
-            formatLine('ɴᴀᴍᴇ', String(fullName).substring(0, 20)),
-            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followersData)),
-            formatLine('ʙɪᴏ', String(bioData).substring(0, 25))
+            formatLine('ᴛᴀʀɢᴇᴛ', 'NPM PACKAGE'),
+            formatLine('ɴᴀᴍᴇ', fullName),
+            formatLine('ᴠᴇʀsɪᴏɴ', String(version)),
+            formatLine('ʟɪᴄᴇɴsᴇ', String(license)),
+            formatLine('ᴀᴜᴛʜᴏʀ', String(author)),
+            formatLine('ᴅᴇsᴄʀɪᴘᴛɪᴏɴ', String(bioData)),
+            formatLine('ʟɪɴᴋ', `npmjs.com/package/${pkg}`)
          ]);
 
          await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in npmstalk.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Whoops, stealth mode broke, I dropped my binoculars! 🤦‍♂️' }, { quoted: msg });
       }
   }
 };

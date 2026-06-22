@@ -10,13 +10,14 @@ const devDir = path.join(baseDir, 'commands', 'developer');
 });
 
 const hostCmds = [
-  'restart', 'shutdown', 'sysinfo', 'cpu', 'ram', 'ping', 'uptime', 'speedtest', 
+  'restart', 'shutdown', 'cpu', 'ram', 'uptime', 'speedtest', 
   'clearsession', 'update', 'logs', 'backupdb', 'restoredb', 'env', 'reloadenv'
 ];
 
 hostCmds.forEach(cmd => {
    const c = `import { createBox, formatLine } from '../../system/box.js';
 import { get } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: '${cmd}',
@@ -24,8 +25,9 @@ export default {
   category: 'host',
   execute: async (sock, msg, args) => {
       try {
-         const isOwner = msg.key.participant === process.env.OWNER_NUMBER + '@s.whatsapp.net' || msg.key.remoteJid === process.env.OWNER_NUMBER + '@s.whatsapp.net';
-         if (!isOwner) return sock.sendMessage(msg.key.remoteJid, { text: 'Only the host/owner can use this command.' }, { quoted: msg });
+         const sender = msg.key.participant || msg.key.remoteJid;
+         const ownerCheck = isOwner(sock, msg, sender);
+         if (!ownerCheck) return sock.sendMessage(msg.key.remoteJid, { text: 'Only the host/owner can use this command.' }, { quoted: msg });
 
          const botname = get('botname') || 'ULTIMATE-MD';
          let result = 'Command executed.';
@@ -70,12 +72,13 @@ export default {
 
 const devCmds = [
   'eval', 'exec', 'broadcast', 'block', 'unblock', 'setbotname', 'setbio', 'setpfp',
-  'leavegc', 'joingc', 'addsudo', 'delsudo', 'listsudo', 'setvar', 'delvar', 'getvar'
+  'leavegc', 'joingc', 'setvar', 'delvar', 'getvar'
 ];
 
 devCmds.forEach(cmd => {
    const c = `import { createBox, formatLine } from '../../system/box.js';
 import { get, set } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: '${cmd}',
@@ -83,8 +86,9 @@ export default {
   category: 'developer',
   execute: async (sock, msg, args) => {
       try {
-         const isOwner = msg.key.participant === process.env.OWNER_NUMBER + '@s.whatsapp.net' || msg.key.remoteJid === process.env.OWNER_NUMBER + '@s.whatsapp.net';
-         if (!isOwner) return sock.sendMessage(msg.key.remoteJid, { text: 'Only the developer can use this command.' }, { quoted: msg });
+         const sender = msg.key.participant || msg.key.remoteJid;
+         const ownerCheck = isOwner(sock, msg, sender);
+         if (!ownerCheck) return sock.sendMessage(msg.key.remoteJid, { text: 'Only the developer can use this command.' }, { quoted: msg });
 
          const botname = get('botname') || 'ULTIMATE-MD';
          let result = 'Dev operation successful.';

@@ -12,16 +12,6 @@ const mediaDir = path.join(baseDir, 'commands', 'mediatools');
 
 // SETTINGS COMMANDS
 const settingsCmds = [
-  { name: 'setbotname', desc: 'Change bot name in database', action: `
-      if (!args[0]) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a new bot name!' });
-      set('botname', args.join(' '));
-      sock.sendMessage(msg.key.remoteJid, { text: \`Bot name updated to: \${args.join(' ')}\` });
-  `},
-  { name: 'setprefix', desc: 'Change bot prefix in database', action: `
-      if (!args[0]) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a new prefix!' });
-      set('prefix', args[0]);
-      sock.sendMessage(msg.key.remoteJid, { text: \`Prefix updated to: \${args[0]}\` });
-  `},
   { name: 'setowner', desc: 'Change owner number in database', action: `
       if (!args[0]) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a new owner number! (e.g. 1234567890)' });
       set('owner', args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net');
@@ -50,14 +40,16 @@ const settingsCmds = [
 settingsCmds.forEach(cmd => {
    const c = `import { createBox, formatLine } from '../../system/box.js';
 import { get, set } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: '${cmd.name}',
   desc: '${cmd.desc}',
   category: 'settings',
   execute: async (sock, msg, args) => {
-      const isOwner = msg.key.fromMe || msg.key.participant?.startsWith(get('owner') || sock.user.id.split(':')[0]) || msg.key.remoteJid?.startsWith(get('owner') || sock.user.id.split(':')[0]);
-      if (!isOwner && '${cmd.name}' !== 'settings') return sock.sendMessage(msg.key.remoteJid, { text: 'Owner only command!' });
+      const sender = msg.key.participant || msg.key.remoteJid;
+      const ownerCheck = isOwner(sock, msg, sender);
+      if (!ownerCheck && '${cmd.name}' !== 'settings') return sock.sendMessage(msg.key.remoteJid, { text: 'Owner only command!' });
       ${cmd.action}
   }
 };
@@ -67,25 +59,27 @@ export default {
 
 // PROFILE COMMANDS (25+)
 const profileCmds = [
-  'online', 'offline', 'available', 'unavailable', 'typing', 'recording',
+  'online', 'offline', 'available', 'unavailable', 'recording',
   'markread', 'markunread', 'archivechat', 'unarchivechat', 'pinchat', 'unpinchat',
-  'clearchat', 'deletechat', 'mutechat', 'unmutechat', 'block', 'unblock', 'getblocklist',
+  'clearchat', 'deletechat', 'mutechat', 'unmutechat', 'getblocklist',
   'setbiobot', 'setnamebot', 'setppbot', 'delppbot', 'getbio', 'getname', 'getabout'
 ];
 
 profileCmds.forEach(cmd => {
    const c = `import { createBox, formatLine } from '../../system/box.js';
 import { get } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: '${cmd}',
   desc: 'Profile utility command for ${cmd}',
   category: 'profile',
   execute: async (sock, msg, args) => {
-      const isOwner = msg.key.fromMe || msg.key.participant?.startsWith(get('owner') || sock.user.id.split(':')[0]) || msg.key.remoteJid?.startsWith(get('owner') || sock.user.id.split(':')[0]);
+      const sender = msg.key.participant || msg.key.remoteJid;
+      const ownerCheck = isOwner(sock, msg, sender);
       
       const botname = get('botname') || 'ULTIMATE-MD';
-      if (!isOwner && '${cmd}'.includes('bot')) return sock.sendMessage(msg.key.remoteJid, { text: 'Owner only command!' });
+      if (!ownerCheck && '${cmd}'.includes('bot')) return sock.sendMessage(msg.key.remoteJid, { text: 'Owner only command!' });
 
       try {
          const box = createBox(botname, [

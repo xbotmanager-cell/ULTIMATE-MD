@@ -1,5 +1,6 @@
 import { createBox, formatLine } from '../../system/box.js';
 import { get, set } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: 'antitag',
@@ -8,6 +9,12 @@ export default {
   category: 'automation',
   react: '🏷️',
   execute: async (sock, msg, args) => {
+    const sender = msg.key.participant || msg.key.remoteJid;
+    const ownerCheck = isOwner(sock, msg, sender);
+    const groupMetadata = msg.key.remoteJid.endsWith('@g.us') ? await sock.groupMetadata(msg.key.remoteJid).catch(() => null) : null;
+    const admins = groupMetadata ? groupMetadata.participants.filter(p => p.admin).map(p => p.id) : [];
+    const realIsAdmin = admins.includes(sender) || ownerCheck;
+    if (!realIsAdmin) return sock.sendMessage(msg.key.remoteJid, { text: 'You need admin or owner rights to use automation controls!' }, { quoted: msg });
     const sub = args[0]?.toLowerCase();
     const val = args[1];
     const jid = msg.key.remoteJid;

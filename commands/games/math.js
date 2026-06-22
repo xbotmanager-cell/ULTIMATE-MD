@@ -1,40 +1,56 @@
-import { createBox, formatLine } from '../../system/box.js';
 import { get } from '../../lib/db.js';
+
+global.mathGames = global.mathGames || {};
 
 export default {
   name: 'math',
-  desc: 'Game command for math',
+  alias: ['mathq'],
+  desc: 'Math Quiz',
   category: 'games',
+  react: '➕',
   execute: async (sock, msg, args) => {
-      try {
-         const input = args[0]?.toLowerCase();
-         const botname = get('botname') || 'ULTIMATE-MD';
-         let result = '';
+    try {
+      const chatId = msg.key.remoteJid;
+      const sender = msg.key.participant || msg.key.remoteJid;
+      const cmd = args[0] ? args[0].toLowerCase() : '';
 
-         if ('math' === 'math') {
-             result = 'What is 8 * 7? Reply with the answer! (Hint: 56)';
-         } else if ('math' === 'rps') {
-             const choices = ['rock', 'paper', 'scissors'];
-             const botChoice = choices[Math.floor(Math.random() * 3)];
-             if(!input) result = 'Choose rock, paper, or scissors!';
-             else result = \`You chose ${input}, I chose ${botChoice}. It's a game!\`;
-         } else if ('math' === 'flip') {
-             result = 'Coin landed on: ' + (Math.random() > 0.5 ? 'Heads' : 'Tails');
-         } else if ('math' === 'dice') {
-             const val = Math.floor(Math.random() * 6) + 1;
-             result = \`You rolled a ${val} 🎲\`;
-         } else {
-             result = 'Play with me later!';
-         }
+      if (cmd === 'start') {
+        if (global.mathGames[chatId]) return sock.sendMessage(chatId, { text: 'Game running! `math end` to stop.' });
 
-         const box = createBox('ɢᴀᴍᴇs 🎮', [
-            formatLine('ɢᴀᴍᴇ', 'MATH'),
-            formatLine('ɪɴғᴏ', result)
-         ]);
+        const ops = ['+', '-', '*'];
+        const op = ops[Math.floor(Math.random() * ops.length)];
+        const n1 = Math.floor(Math.random() * 50) + 1;
+        const n2 = Math.floor(Math.random() * 20) + 1;
+        const q = `${n1} ${op} ${n2}`;
+        const ans = eval(q);
 
-         await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
-      } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in game.' }, { quoted: msg });
+        global.mathGames[chatId] = { ans };
+
+        const out = `➕ *MATH QUIZ* ➖\n\nWhat is: *${q}* = ?\n\nUse \`math <answer>\` to answer.\nType \`math end\` to stop.`;
+        return sock.sendMessage(chatId, { text: out });
       }
+
+      if (cmd === 'end') {
+        delete global.mathGames[chatId];
+        return sock.sendMessage(chatId, { text: 'Game stopped! 🛑' });
+      }
+
+      const game = global.mathGames[chatId];
+      if (!game) return sock.sendMessage(chatId, { text: 'No game! `math start` to play.' });
+
+      const ans = parseInt(cmd);
+      if (isNaN(ans)) return sock.sendMessage(chatId, { text: 'Send a number!' });
+
+      if (ans === game.ans) {
+         const out = `🎉 @${sender.split('@')[0]} is correct!\nThe answer is *${game.ans}*!`;
+         delete global.mathGames[chatId];
+         return sock.sendMessage(chatId, { text: out, mentions: [sender] });
+      } else {
+         return sock.sendMessage(chatId, { text: '❌ wrong! Try again.' });
+      }
+
+    } catch (e) {
+      await sock.sendMessage(msg.key.remoteJid, { text: 'Crash! 🤡' });
+    }
   }
 };

@@ -16,7 +16,7 @@ export default {
       const sender = msg.key.participant || msg.key.remoteJid;
       
       const admins = groupMetadata.participants.filter(p => p.admin !== null).map(p => p.id);
-      const realIsAdmin = admins.includes(sender) || msg.key.fromMe || sender.startsWith(get('owner') || 'some');
+      const { isOwner } = await import('../../lib/sudo.js');\n      const realIsAdmin = admins.includes(sender) || isOwner(sock, msg, sender);
 
       if (!realIsAdmin) return sock.sendMessage(msg.key.remoteJid, { text: 'Nice try but you need admin powers for that!' }, { quoted: msg });
       

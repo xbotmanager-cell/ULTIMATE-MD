@@ -4,66 +4,65 @@ import axios from 'axios';
 
 export default {
   name: 'robloxstalk',
-  alias: ['stalkroblox'],
-  desc: 'Stalk profile for roblox',
+  alias: ['stalkroblox', 'rbxstalk'],
+  desc: 'Stalk a Roblox profile',
   category: 'stalker',
+  react: '🕵️',
   execute: async (sock, msg, args) => {
       try {
-         const username = args.join('');
-         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid username to stalk!' }, { quoted: msg });
+         const username = args.join('').replace('@', '');
+         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid Roblox username!' }, { quoted: msg });
 
-         const target = cmd === 'githubstalk' ? 'github' : 'roblox';
-         const apiSources = [];
-         
-         if (target === 'github') {
-             apiSources.push({ url: `https://api.github.com/users/${encodeURIComponent(username)}`, pic: 'avatar_url', name: 'name', bio: 'bio', followers: 'followers' });
-         } else {
-             for(let i=1; i<=20; i++) {
-                 apiSources.push({ url: `https://api${i}.example.com/${target}stalk?user=${encodeURIComponent(username)}`, pic: 'profile_pic', name: 'fullname', bio: 'description', followers: 'followers_count' });
-             }
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '🕵️ Fetching profile details...' }, { quoted: msg });
-
-         let picUrl = 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png';
+         let picUrl = '';
          let fullName = 'N/A';
          let bioData = 'N/A';
-         let followersData = '0';
-         let usedApi = 'Fallback';
+         let created = 'N/A';
+         let isBanned = 'False';
 
-         for (let i = 0; i < apiSources.length; i++) {
-            try {
-               const res = await axios.get(apiSources[i].url, { timeout: 3000 });
-               if (res.data) {
-                  const d = res.data;
-                  if (d[apiSources[i].pic]) picUrl = d[apiSources[i].pic];
-                  if (d[apiSources[i].name]) fullName = d[apiSources[i].name];
-                  if (d[apiSources[i].bio]) bioData = d[apiSources[i].bio];
-                  if (d[apiSources[i].followers]) followersData = d[apiSources[i].followers];
-                  
-                  let u = new URL(apiSources[i].url);
-                  usedApi = u.hostname;
-                  break;
-               }
-            } catch (e) {
-               continue;
-            }
+         const axiosConfig = { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' } };
+         try {
+             // Use Roblox search API for UID then data API
+             const searchRes = await axios.get(`https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(username)}&limit=10`, axiosConfig);
+             if (searchRes.data?.data?.length > 0) {
+                 const uid = searchRes.data.data[0].id;
+                 const userRes = await axios.get(`https://users.roblox.com/v1/users/${uid}`, axiosConfig);
+                 if (userRes.data) {
+                     fullName = userRes.data.displayName || userRes.data.name;
+                     bioData = userRes.data.description || 'No description';
+                     created = new Date(userRes.data.created).toDateString();
+                     isBanned = userRes.data.isBanned ? 'True' : 'False';
+                     
+                     // Get Thumbnail
+                     try {
+                         const thumbRes = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${uid}&size=720x720&format=Png&isCircular=false`, axiosConfig);
+                         picUrl = thumbRes.data?.data?.[0]?.imageUrl || '';
+                     } catch(err){}
+                 }
+             } else {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'Roblox user not found! 😭' }, { quoted: msg });
+             }
+         } catch(e) {
+             return sock.sendMessage(msg.key.remoteJid, { text: `Roblox API down. Direct link: roblox.com/users` }, { quoted: msg });
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
          const box = createBox(botname, [
-            formatLine('ᴛᴀʀɢᴇᴛ', target.toUpperCase()),
+            formatLine('ᴛᴀʀɢᴇᴛ', 'ROBLOX'),
             formatLine('ᴜsᴇʀɴᴀᴍᴇ', username),
-            formatLine('ɴᴀᴍᴇ', String(fullName).substring(0, 20)),
-            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followersData)),
-            formatLine('ʙɪᴏ', String(bioData).substring(0, 25))
+            formatLine('ɴᴀᴍᴇ', fullName),
+            formatLine('ᴄʀᴇᴀᴛᴇᴅ', String(created)),
+            formatLine('ʙᴀɴɴᴇᴅ', String(isBanned)),
+            formatLine('ʙɪᴏ', String(bioData).substring(0, 50)),
+            formatLine('ʟɪɴᴋ', `roblox.com/search/users?keyword=${username}`)
          ]);
 
-         await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         if (picUrl) {
+             await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         } else {
+             await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
+         }
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in robloxstalk.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Whoops, stealth mode broke, I dropped my binoculars! 🤦‍♂️' }, { quoted: msg });
       }
   }
 };

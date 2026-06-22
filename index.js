@@ -11,6 +11,8 @@ import { config } from 'dotenv';
 import { get, set } from './lib/db.js';
 import { Boom } from '@hapi/boom';
 
+global.startupTime = Math.floor(Date.now() / 1000);
+
 config();
 
 const app = express();

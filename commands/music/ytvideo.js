@@ -1,106 +1,88 @@
 import { createBox, formatLine } from '../../system/box.js';
 import { get } from '../../lib/db.js';
+import yts from 'yt-search';
 import axios from 'axios';
 
 export default {
   name: 'ytvideo',
   alias: ['ytvideomusic', 'ytvideodl'],
-  desc: 'Music downloader and search for ytvideo',
+  desc: 'Search and download ytvideo',
   category: 'music',
   execute: async (sock, msg, args) => {
       try {
          const query = args.join(' ');
-         if (!query) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a search query or URL for ytvideo!' }, { quoted: msg });
+         if (!query) return sock.sendMessage(msg.key.remoteJid, { text: 'Bruh, provide a title or link! 😂' }, { quoted: msg });
 
-         const apiSources = [];
-         
-         for(let i=1; i<=40; i++) {
-             apiSources.push({ url: `https://api${i}.example.com/music/ytvideo?q=${encodeURIComponent(query)}`, dl: 'download_url', title: 'title', artist: 'artist' });
+         await sock.sendMessage(msg.key.remoteJid, { text: '🎵 Searching... hang on!' }, { quoted: msg });
+
+         let titleStr = 'Unknown';
+         let artistStr = 'Unknown';
+         let thumb = '';
+         let url = '';
+
+         if ('ytvideo' === 'lyrics') {
+             try {
+                 const res = await axios.get(`https://some-random-api.com/lyrics?title=${encodeURIComponent(query)}`, {timeout: 5000});
+                 const botname = get('botname') || 'ULTIMATE-MD';
+                 const box = createBox(botname, [
+                    formatLine('sᴏɴɢ', String(res.data.title).substring(0, 20)),
+                    formatLine('ᴀʀᴛɪsᴛ', String(res.data.author).substring(0, 20))
+                 ]);
+                 return sock.sendMessage(msg.key.remoteJid, { text: box + '\n\n' + res.data.lyrics }, { quoted: msg });
+             } catch(e) {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'Could not find lyrics for that!' }, { quoted: msg });
+             }
          }
 
-         // Real alternative free APIs for yt/spotify if applicable
-         if ('ytvideo' === 'play' || 'ytvideo' === 'ytmp3') {
-             apiSources.unshift({ url: `https://api.akuari.my.id/downloader/ytplay1?query=${encodeURIComponent(query)}`, dl: 'result.url', title: 'result.title', artist: 'result.channel' });
-             apiSources.unshift({ url: `https://weeb-api.vercel.app/ytplay?query=${encodeURIComponent(query)}`, dl: 'url', title: 'title', artist: 'channel' });
-         } else if ('ytvideo' === 'spotify') {
-             apiSources.unshift({ url: `https://api.akuari.my.id/downloader/spotify?link=${encodeURIComponent(query)}`, dl: 'result.url', title: 'result.title', artist: 'result.artist' });
-         } else if ('ytvideo' === 'lyrics') {
-             apiSources.unshift({ url: `https://some-random-api.com/lyrics?title=${encodeURIComponent(query)}`, dl: 'lyrics', title: 'title', artist: 'author' });
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '🎵 Searching and downloading... please wait.' }, { quoted: msg });
-
-         let mediaUrl = '';
-         let titleStr = 'Unknown Title';
-         let artistStr = 'Unknown Artist';
-         let usedApi = 'Fallback';
-
-         for (let i = 0; i < apiSources.length; i++) {
-            try {
-               const res = await axios.get(apiSources[i].url, { timeout: 4000 });
-               if (res.data) {
-                  let d = res.data;
-                  const resolvePath = (obj, path) => path.split('.').reduce((o, p) => o ? o[p] : null, obj);
-
-                  const dlPath = resolvePath(d, apiSources[i].dl);
-                  if (dlPath) {
-                      mediaUrl = dlPath;
-                      if (!mediaUrl.startsWith('http') && 'ytvideo' === 'lyrics') {
-                          mediaUrl = 'lyrics_found'; // flag for lyrics
-                      }
-                  }
-                  
-                  const t = resolvePath(d, apiSources[i].title);
-                  if (t) titleStr = t;
-                  
-                  const a = resolvePath(d, apiSources[i].artist);
-                  if (a) artistStr = a;
-
-                  let u = new URL(apiSources[i].url);
-                  usedApi = u.hostname;
-                  
-                  if (mediaUrl) break;
-               }
-            } catch (e) {
-               continue;
-            }
+         try {
+             const r = await yts(query);
+             const videos = r.videos;
+             if (videos.length === 0) {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'No results found! 😭' }, { quoted: msg });
+             }
+             const v = videos[0];
+             titleStr = v.title;
+             artistStr = v.author.name;
+             thumb = v.thumbnail;
+             url = v.url;
+         } catch(e) {
+             return sock.sendMessage(msg.key.remoteJid, { text: 'Search failed, try again!' }, { quoted: msg });
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
-         
-         if ('ytvideo' === 'lyrics' && mediaUrl === 'lyrics_found') {
-             const box = createBox(botname, [
-                formatLine('sᴏɴɢ', String(titleStr).substring(0, 20)),
-                formatLine('ᴀʀᴛɪsᴛ', String(artistStr).substring(0, 20)),
-                formatLine('sᴏᴜʀᴄᴇ', usedApi)
-             ]);
-             return sock.sendMessage(msg.key.remoteJid, { text: box + '\n\n' + mediaUrl }, { quoted: msg });
-         }
-
-         if (!mediaUrl || !mediaUrl.startsWith('http')) {
-             mediaUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-             titleStr = 'Mock Fallback Audio';
-             artistStr = 'Because No API Resulted';
-         }
-
          const box = createBox(botname, [
-            formatLine('ᴛᴏᴏʟ', 'YTVIDEO DOWNLOADER'),
+            formatLine('ᴛᴏᴏʟ', 'YTVIDEO'),
             formatLine('ᴛɪᴛʟᴇ', String(titleStr).substring(0, 20)),
             formatLine('ᴀʀᴛɪsᴛ', String(artistStr).substring(0, 20)),
-            formatLine('sᴏᴜʀᴄᴇ', usedApi)
+            formatLine('sᴏᴜʀᴄᴇ', 'YouTube')
          ]);
 
-         if ('ytvideo' === 'ytmp4' || 'ytvideo' === 'ytvideo') {
-             await sock.sendMessage(msg.key.remoteJid, { video: { url: mediaUrl }, caption: box }, { quoted: msg });
-         } else {
-             await sock.sendMessage(msg.key.remoteJid, { image: { url: 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png' }, caption: box });
-             await sock.sendMessage(msg.key.remoteJid, { audio: { url: mediaUrl }, mimetype: 'audio/mp4' }, { quoted: msg });
+         let mediaUrl = '';
+         try {
+             const dlRes = await axios.get(`https://api.akuari.my.id/downloader/ytplay1?query=${encodeURIComponent(url)}`, {timeout: 5000});
+             if (dlRes.data && dlRes.data.result && dlRes.data.result.url) {
+                 mediaUrl = dlRes.data.result.url;
+             }
+         } catch(e) {}
+
+         if ('ytvideo' === 'songsearch' || !mediaUrl) {
+             await sock.sendMessage(msg.key.remoteJid, { image: { url: thumb }, caption: box }, { quoted: msg });
+             if (!mediaUrl && 'ytvideo' !== 'songsearch') {
+                  await sock.sendMessage(msg.key.remoteJid, { text: '⚠️ Failed to fetch download link, but here is the info!' }, { quoted: msg });
+             }
+         }
+
+         if (mediaUrl) {
+             if ('ytvideo' === 'ytmp4' || 'ytvideo' === 'ytvideo') {
+                 await sock.sendMessage(msg.key.remoteJid, { video: { url: mediaUrl }, caption: box }, { quoted: msg });
+             } else {
+                 await sock.sendMessage(msg.key.remoteJid, { image: { url: thumb }, caption: box });
+                 await sock.sendMessage(msg.key.remoteJid, { audio: { url: mediaUrl }, mimetype: 'audio/mp4' }, { quoted: msg });
+             }
          }
 
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in ytvideo downloader.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Yikes, executing ytvideo went completely sideways 😂.' }, { quoted: msg });
       }
   }
 };

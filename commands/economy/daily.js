@@ -39,7 +39,7 @@ export default {
 
          await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in economy.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'The economy crashed harder than my code! 📉' }, { quoted: msg });
       }
   }
 };

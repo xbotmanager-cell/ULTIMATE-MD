@@ -7,14 +7,23 @@ export default async function antiviewonce(sock, msg) {
     if (msg.key.fromMe) return;
     if (!isEnabledInScope('antiviewonce', msg)) return;
 
-    const messageContent = msg.message;
+    let messageContent = msg.message;
     if (!messageContent) return;
 
-    const type = Object.keys(messageContent)[0];
+    let type = Object.keys(messageContent)[0];
+    if (type === 'ephemeralMessage') {
+        messageContent = messageContent.ephemeralMessage.message;
+        type = Object.keys(messageContent)[0];
+    } else if (type === 'documentWithCaptionMessage') {
+        messageContent = messageContent.documentWithCaptionMessage.message;
+        type = Object.keys(messageContent)[0];
+    }
+
+    const isViewOnce = type === 'viewOnceMessage' || type === 'viewOnceMessageV2' || type === 'viewOnceMessageV2Extension' || messageContent[type]?.viewOnce;
     
-    if (type === 'viewOnceMessage' || type === 'viewOnceMessageV2') {
+    if (isViewOnce) {
       const jid = msg.key.remoteJid;
-      const mediaMsg = messageContent[type].message;
+      const mediaMsg = type.startsWith('viewOnceMessage') ? messageContent[type].message : messageContent;
       const mediaType = Object.keys(mediaMsg)[0]; // imageMessage, videoMessage, etc.
 
       // We need to pass a mocked msg object to downloadMediaMessage

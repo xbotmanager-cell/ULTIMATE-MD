@@ -43,7 +43,7 @@ export default {
 
          await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error executing compliment.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Yikes, executing compliment went completely sideways 😂.' }, { quoted: msg });
       }
   }
 };

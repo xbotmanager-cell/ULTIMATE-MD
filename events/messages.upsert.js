@@ -8,6 +8,8 @@ export default {
 
     for (const msg of messages) {
       try {
+        if (msg.messageTimestamp && msg.messageTimestamp < global.startupTime) continue;
+
         if (!msg.message) continue;
 
         const messageType = Object.keys(msg.message)[0];

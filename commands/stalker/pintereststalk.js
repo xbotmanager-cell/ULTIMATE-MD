@@ -4,66 +4,66 @@ import axios from 'axios';
 
 export default {
   name: 'pintereststalk',
-  alias: ['stalkpinterest'],
-  desc: 'Stalk profile for pinterest',
+  alias: ['stalkpinterest', 'pinstalk'],
+  desc: 'Stalk a Pinterest profile',
   category: 'stalker',
+  react: '🕵️',
   execute: async (sock, msg, args) => {
       try {
-         const username = args.join('');
-         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid username to stalk!' }, { quoted: msg });
+         const username = args.join('').replace('@', '');
+         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid Pinterest username!' }, { quoted: msg });
 
-         const target = cmd === 'githubstalk' ? 'github' : 'pinterest';
-         const apiSources = [];
-         
-         if (target === 'github') {
-             apiSources.push({ url: `https://api.github.com/users/${encodeURIComponent(username)}`, pic: 'avatar_url', name: 'name', bio: 'bio', followers: 'followers' });
-         } else {
-             for(let i=1; i<=20; i++) {
-                 apiSources.push({ url: `https://api${i}.example.com/${target}stalk?user=${encodeURIComponent(username)}`, pic: 'profile_pic', name: 'fullname', bio: 'description', followers: 'followers_count' });
-             }
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '🕵️ Fetching profile details...' }, { quoted: msg });
-
-         let picUrl = 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png';
+         let picUrl = '';
          let fullName = 'N/A';
          let bioData = 'N/A';
-         let followersData = '0';
-         let usedApi = 'Fallback';
+         let followers = 'N/A';
+         let following = 'N/A';
 
-         for (let i = 0; i < apiSources.length; i++) {
-            try {
-               const res = await axios.get(apiSources[i].url, { timeout: 3000 });
-               if (res.data) {
-                  const d = res.data;
-                  if (d[apiSources[i].pic]) picUrl = d[apiSources[i].pic];
-                  if (d[apiSources[i].name]) fullName = d[apiSources[i].name];
-                  if (d[apiSources[i].bio]) bioData = d[apiSources[i].bio];
-                  if (d[apiSources[i].followers]) followersData = d[apiSources[i].followers];
-                  
-                  let u = new URL(apiSources[i].url);
-                  usedApi = u.hostname;
-                  break;
-               }
-            } catch (e) {
-               continue;
-            }
+         const axiosConfig = { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' } };
+         try {
+             const res = await axios.get(`https://api.popcat.xyz/pinterest?user=${encodeURIComponent(username)}`, axiosConfig);
+             if (res.data?.full_name) {
+                 picUrl = res.data.profile_pic || '';
+                 fullName = res.data.full_name || username;
+                 bioData = res.data.biography || 'No bio';
+                 followers = res.data.followers;
+                 following = res.data.following;
+             } else {
+                 throw new Error('Not found');
+             }
+         } catch(e) { 
+             try {
+                 const res = await axios.get(`https://bk9.fun/stalk/pinterest?q=${encodeURIComponent(username)}`);
+                 if(res.data?.BK9) {
+                     picUrl = res.data.BK9.profile_image_url || '';
+                     fullName = res.data.BK9.full_name || username;
+                     bioData = res.data.BK9.about || 'No bio';
+                     followers = res.data.BK9.follower_count || 'Private';
+                     following = res.data.BK9.following_count || 'Private';
+                 } else { throw new Error('Not found') }
+             } catch(err) {
+                 return sock.sendMessage(msg.key.remoteJid, { text: `Pinterest API down. Direct link: pinterest.com/${username}` }, { quoted: msg });
+             }
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
          const box = createBox(botname, [
-            formatLine('ᴛᴀʀɢᴇᴛ', target.toUpperCase()),
+            formatLine('ᴛᴀʀɢᴇᴛ', 'PINTEREST'),
             formatLine('ᴜsᴇʀɴᴀᴍᴇ', username),
-            formatLine('ɴᴀᴍᴇ', String(fullName).substring(0, 20)),
-            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followersData)),
-            formatLine('ʙɪᴏ', String(bioData).substring(0, 25))
+            formatLine('ɴᴀᴍᴇ', fullName),
+            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followers)),
+            formatLine('ғᴏʟʟᴏᴡɪɴɢ', String(following)),
+            formatLine('ʙɪᴏ', String(bioData)),
+            formatLine('ʟɪɴᴋ', `pinterest.com/${username}`)
          ]);
 
-         await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         if (picUrl) {
+             await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         } else {
+             await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
+         }
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in pintereststalk.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Whoops, stealth mode broke, I dropped my binoculars! 🤦‍♂️' }, { quoted: msg });
       }
   }
 };

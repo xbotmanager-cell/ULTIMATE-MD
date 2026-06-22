@@ -4,66 +4,82 @@ import axios from 'axios';
 
 export default {
   name: 'tiktokstalk',
-  alias: ['stalktiktok'],
-  desc: 'Stalk profile for tiktok',
+  alias: ['stalktiktok', 'ttstalk', 'tiktokprofile'],
+  desc: 'Stalk a TikTok profile',
   category: 'stalker',
+  react: '🕵️',
   execute: async (sock, msg, args) => {
       try {
-         const username = args.join('');
-         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid username to stalk!' }, { quoted: msg });
+         const username = args.join('').replace('@', '');
+         if (!username) return sock.sendMessage(msg.key.remoteJid, { text: 'Provide a valid TikTok username!' }, { quoted: msg });
 
-         const target = cmd === 'githubstalk' ? 'github' : 'tiktok';
-         const apiSources = [];
-         
-         if (target === 'github') {
-             apiSources.push({ url: `https://api.github.com/users/${encodeURIComponent(username)}`, pic: 'avatar_url', name: 'name', bio: 'bio', followers: 'followers' });
-         } else {
-             for(let i=1; i<=20; i++) {
-                 apiSources.push({ url: `https://api${i}.example.com/${target}stalk?user=${encodeURIComponent(username)}`, pic: 'profile_pic', name: 'fullname', bio: 'description', followers: 'followers_count' });
-             }
-         }
-
-         apiSources.sort(() => Math.random() - 0.5);
-
-         await sock.sendMessage(msg.key.remoteJid, { text: '🕵️ Fetching profile details...' }, { quoted: msg });
-
-         let picUrl = 'https://i.ibb.co/hxBXBPjD/157c85ac3-logo.png';
+         let picUrl = '';
          let fullName = 'N/A';
          let bioData = 'N/A';
-         let followersData = '0';
-         let usedApi = 'Fallback';
+         let followers = '0';
+         let following = '0';
+         let likes = '0';
+         let videos = '0';
+         let friends = '0';
 
-         for (let i = 0; i < apiSources.length; i++) {
-            try {
-               const res = await axios.get(apiSources[i].url, { timeout: 3000 });
-               if (res.data) {
-                  const d = res.data;
-                  if (d[apiSources[i].pic]) picUrl = d[apiSources[i].pic];
-                  if (d[apiSources[i].name]) fullName = d[apiSources[i].name];
-                  if (d[apiSources[i].bio]) bioData = d[apiSources[i].bio];
-                  if (d[apiSources[i].followers]) followersData = d[apiSources[i].followers];
-                  
-                  let u = new URL(apiSources[i].url);
-                  usedApi = u.hostname;
-                  break;
-               }
-            } catch (e) {
-               continue;
-            }
+         const axiosConfig = { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' } };
+         try {
+             const res = await axios.get(`https://www.tikwm.com/api/user/info?unique_id=${encodeURIComponent(username)}`, axiosConfig);
+             if (res.data && res.data.data && res.data.data.user) {
+                 const data = res.data.data;
+                 picUrl = data.user.avatarLarger || data.user.avatarMedium || data.user.avatarThumb || '';
+                 fullName = data.user.nickname || username;
+                 bioData = data.user.signature || 'No bio';
+                 followers = data.stats.followerCount || '0';
+                 following = data.stats.followingCount || '0';
+                 likes = data.stats.heartCount || '0';
+                 videos = data.stats.videoCount || '0';
+                 friends = data.stats.friendCount || '0';
+             } else {
+                 throw new Error('Not found');
+             }
+         } catch(e) { 
+             try {
+                 const res = await axios.get(`https://bk9.fun/stalk/tiktok?q=${encodeURIComponent(username)}`, axiosConfig);
+                 if (res.data?.status && res.data?.BK9) {
+                     const data = res.data.BK9;
+                     picUrl = data.avatar || '';
+                     fullName = data.nickname || username;
+                     bioData = data.signature || 'No bio';
+                     followers = data.followerCount || '0';
+                     following = data.followingCount || '0';
+                     likes = data.heartCount || '0';
+                     videos = data.videoCount || '0';
+                     friends = data.friendCount || '0';
+                 } else {
+                     return sock.sendMessage(msg.key.remoteJid, { text: 'TikTok user not found or API is down! 😭' }, { quoted: msg });
+                 }
+             } catch(err) {
+                 return sock.sendMessage(msg.key.remoteJid, { text: 'TikTok APIs are heavily restricted down, couldn\'t stalk!' }, { quoted: msg });
+             }
          }
 
          const botname = get('botname') || 'ULTIMATE-MD';
          const box = createBox(botname, [
-            formatLine('ᴛᴀʀɢᴇᴛ', target.toUpperCase()),
+            formatLine('ᴛᴀʀɢᴇᴛ', 'TIKTOK'),
             formatLine('ᴜsᴇʀɴᴀᴍᴇ', username),
-            formatLine('ɴᴀᴍᴇ', String(fullName).substring(0, 20)),
-            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followersData)),
-            formatLine('ʙɪᴏ', String(bioData).substring(0, 25))
+            formatLine('ɴɪᴄᴋɴᴀᴍᴇ', fullName),
+            formatLine('ғᴏʟʟᴏᴡᴇʀs', String(followers)),
+            formatLine('ғᴏʟʟᴏᴡɪɴɢ', String(following)),
+            formatLine('ʟɪᴋᴇs', String(likes)),
+            formatLine('ᴠɪᴅᴇᴏs', String(videos)),
+            formatLine('ғʀɪᴇɴᴅs', String(friends)),
+            formatLine('ʙɪᴏ', String(bioData)),
+            formatLine('ʟɪɴᴋ', `tiktok.com/@${username}`)
          ]);
 
-         await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         if (picUrl) {
+             await sock.sendMessage(msg.key.remoteJid, { image: { url: picUrl }, caption: box }, { quoted: msg });
+         } else {
+             await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
+         }
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error in tiktokstalk.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Whoops, stealth mode broke, I dropped my binoculars! 🤦‍♂️' }, { quoted: msg });
       }
   }
 };

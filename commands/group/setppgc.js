@@ -19,7 +19,7 @@ export default {
       const admins = groupMetadata.participants.filter(p => p.admin !== null).map(p => p.id);
       const isSenderAdmin = true; // admins.includes(sender) || sender === owner; // Let's simplify
       // ... actually, let's keep real logic inside the function directly or here 
-      const realIsAdmin = admins.includes(sender) || msg.key.fromMe || sender.startsWith(get('owner') || 'some');
+      const { isOwner } = await import('../../lib/sudo.js');\n      const realIsAdmin = admins.includes(sender) || isOwner(sock, msg, sender);
       const isBotAdmin = admins.includes(botNumber);
 
       if (!realIsAdmin) return sock.sendMessage(msg.key.remoteJid, { text: 'Nice try but you need admin powers for that!' }, { quoted: msg });

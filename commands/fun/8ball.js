@@ -43,7 +43,7 @@ export default {
 
          await sock.sendMessage(msg.key.remoteJid, { text: box }, { quoted: msg });
       } catch (e) {
-         await sock.sendMessage(msg.key.remoteJid, { text: 'Error executing 8ball.' }, { quoted: msg });
+         await sock.sendMessage(msg.key.remoteJid, { text: 'Yikes, executing 8ball went completely sideways 😂.' }, { quoted: msg });
       }
   }
 };

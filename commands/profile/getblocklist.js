@@ -1,15 +1,17 @@
 import { createBox, formatLine } from '../../system/box.js';
 import { get } from '../../lib/db.js';
+import { isOwner } from '../../lib/sudo.js';
 
 export default {
   name: 'getblocklist',
   desc: 'Profile utility command for getblocklist',
   category: 'profile',
   execute: async (sock, msg, args) => {
-      const isOwner = msg.key.fromMe || msg.key.participant?.startsWith(get('owner') || sock.user.id.split(':')[0]) || msg.key.remoteJid?.startsWith(get('owner') || sock.user.id.split(':')[0]);
+      const sender = msg.key.participant || msg.key.remoteJid;
+      const ownerCheck = isOwner(sock, msg, sender);
       
       const botname = get('botname') || 'ULTIMATE-MD';
-      if (!isOwner && 'getblocklist'.includes('bot')) return sock.sendMessage(msg.key.remoteJid, { text: 'Owner only command!' });
+      if (!ownerCheck && 'getblocklist'.includes('bot')) return sock.sendMessage(msg.key.remoteJid, { text: 'Owner only command!' });
 
       try {
          const box = createBox(botname, [
