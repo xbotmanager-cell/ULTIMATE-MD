@@ -3,7 +3,7 @@ import { initDb } from './lib/db.js';
 import { loadAll } from './lib/loader.js';
 import { logInfo, logError } from './lib/logger.js';
 import express from 'express';
-import { makeWASocket, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
@@ -27,11 +27,12 @@ const startBot = async () => {
   }
 
   const sessionId = process.env.SESSION_ID;
-  if (sessionId && sessionId.startsWith('SWIFTBOT~')) {
+  const credsPath = path.join('./sessions', 'creds.json');
+  if (sessionId && sessionId.startsWith('SWIFTBOT~') && !fs.existsSync(credsPath)) {
     try {
       const base64Data = sessionId.replace('SWIFTBOT~', '');
       const jsonData = Buffer.from(base64Data, 'base64').toString('utf-8');
-      fs.writeFileSync('./sessions/creds.json', jsonData);
+      fs.writeFileSync(credsPath, jsonData);
       logInfo('Session decoded and creds.json written successfully.');
     } catch (err) {
       logError('Failed to decode SESSION_ID: ' + err.message);
@@ -46,10 +47,14 @@ const startBot = async () => {
   const currentMode = get('mode') || 'public';
   const isGhost = currentMode === 'ghost';
 
+  const { version } = await fetchLatestBaileysVersion();
+  logInfo(`Using Baileys v${version.join('.')}`);
+
   const sock = makeWASocket({
+    version,
     auth: state,
     logger: pino({ level: 'silent' }),
-    browser: ['Ubuntu', 'Chrome', '20.0.0'],
+    browser: Browsers.ubuntu('Chrome'),
     markOnlineOnConnect: !isGhost,
     sendReceipts: !isGhost
   });
